@@ -22,8 +22,8 @@ backtester = Backtester(
 
 backtester.run(
     MeanReversion(
-        window=20, entry_threshold=1.2, exit_threshold=0.2,
-        model_trust=20.0, mu_alpha=0.1,
+        calibration_window=20, entry_threshold=1.2, exit_threshold=0.2,
+        model_trust=20.0, mu_ewma_alpha=0.1,
         jump_z_threshold=5.0,
     ),
     n_mote_carlo_paths=1000
