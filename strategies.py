@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 from backtesterlib import Strategy
 
-from ou import OUKalman
+from ou import JumpOUKalman
 
 @dataclass(slots=True)
 class MeanReversion(Strategy):
@@ -27,7 +27,7 @@ class MeanReversion(Strategy):
     def generate_signals(self, df: pd.DataFrame) -> pd.Series:
         prices = df["close"].to_numpy(dtype=float)
 
-        model = OUKalman.calibrate(
+        model = JumpOUKalman.calibrate(
             prices[:self.window], self.model_trust, 
             self.mu_alpha, self.jump_z_threshold
         )
@@ -47,7 +47,7 @@ class MeanReversion(Strategy):
                 if z < -self.entry_threshold:
                     signal[t] = 1.0
 
-            elif z <= -self.exit_threshold:
+            elif z < -self.exit_threshold:
                 signal[t] = prev_signal
 
         return pd.Series(signal, index=range(n))
