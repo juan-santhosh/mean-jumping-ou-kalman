@@ -4,6 +4,23 @@ import numpy as np
 
 @dataclass(slots=True)
 class JumpOUKalman:
+    """
+    Kalman filtered mean-jumping Ornstein-Uhlenbeck process.
+    Parameters are chosen through the calibrate() class method.
+
+    Attributes:
+        phi (float): Mean reversion speed bounded by (0, 1.0).
+        mu (float): OU model estimate of long-run mean price.
+        sigma (float): Volatility of price movements.
+        Q (float): Process noise covariance.
+        P (float): Process state covariance.
+        R (float): Observation noise covariance.
+        x (float): Current latent state estimate.
+        mu_ewma_alpha (float): Learning rate for adapting mu to x.
+        jump_z_threshold (float): Innovation z-score required to classify an observation as a jump.
+        just_jumped (bool): Default False. Stores whether the most recent price update was a jump.
+    """
+
     phi: float
     mu: float
     sigma: float
@@ -22,6 +39,22 @@ class JumpOUKalman:
     def calibrate(
             cls, prices: np.ndarray, model_trust: float,
             mu_ewma_alpha: float, jump_z_threshold: float) -> JumpOUKalman:
+        
+        """
+        Estimate model parameters from historical prices.
+
+        The discrete-time OU process is approximated as an AR(1) model
+        and fit via ordinary least squares.
+
+        Parameters:
+            prices (np.ndarray): NumPy array of historical price observations.
+            model_trust (float): Percentage confidence in OU model. Larger values reduce influence of new observations.
+            mu_ewma_alpha (float): Learning rate for adapting mu to x.
+            jump_z_threshold (float): Innovation z-score required to classify an observation as a jump.
+        
+        Returns:
+            JumpOUKalman: Model with parameters calibrated to historical price data.
+        """
         
         p = max(0, min(100, model_trust)) / 100.0
         trust_scale = 1e8 if p >= 1.0 else 0.1 + (10.0 - 0.1) * p
@@ -68,12 +101,21 @@ class JumpOUKalman:
         )
 
     def update(self, price: float) -> float:
+        """
+        Update Kalman filter with latest price and return z-score of price.
+
+        Parameters:
+            price (float): Latest observed market price.
+
+        Returns:
+            float: Innovation z-score. Returns zero on jump.
+        """
+
         predicted_state = self.phi * self.x + (1.0 - self.phi) * self.mu
         predicted_covariance = self.phi**2 * self.P + self.Q
 
-        total_variance = predicted_covariance + self.R
         innovation = price - predicted_state
-
+        total_variance = predicted_covariance + self.R
         z_score = innovation / float(np.sqrt(total_variance))
 
         self.just_jumped = abs(z_score) > self.jump_z_threshold
