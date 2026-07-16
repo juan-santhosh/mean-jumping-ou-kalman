@@ -56,6 +56,7 @@ class JumpOUKalman:
             JumpOUKalman: Model with parameters calibrated to historical price data.
         """
         
+        # Scale percentage confidence
         p = max(0, min(100, model_trust)) / 100.0
         trust_scale = 1e8 if p >= 1.0 else 0.1 + (10.0 - 0.1) * p
 
@@ -74,6 +75,7 @@ class JumpOUKalman:
         X = np.column_stack([np.ones_like(x_prev), x_prev])
         c, phi = np.linalg.lstsq(X, x_current, rcond=None)[0].astype(float)
 
+        # Clip phi to bounds (0.0, 1.0)
         phi = float(np.clip(phi, 0.01, 0.99))
 
         residuals = x_current - (c + phi * x_prev)
@@ -111,13 +113,16 @@ class JumpOUKalman:
             float: Innovation z-score. Returns zero on jump.
         """
 
+        # Kalman prediction step
         predicted_state = self.phi * self.x + (1.0 - self.phi) * self.mu
         predicted_covariance = self.phi**2 * self.P + self.Q
 
+        # Calculate innovation z-score
         innovation = price - predicted_state
         total_variance = predicted_covariance + self.R
         z_score = innovation / float(np.sqrt(total_variance))
 
+        # Reset state if jumped
         self.just_jumped = abs(z_score) > self.jump_z_threshold
 
         if self.just_jumped:
@@ -126,10 +131,13 @@ class JumpOUKalman:
 
             return 0.0
 
+        # Update kalman state
         kalman_gain = predicted_covariance / total_variance
+
         self.x = predicted_state + kalman_gain * innovation
         self.P = (1.0 - kalman_gain) * predicted_covariance
 
+        # Adapt mu to x with an exponentially weighted moving average
         self.mu += self.mu_ewma_alpha * (self.x - self.mu)
 
         return z_score
