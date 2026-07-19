@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 from backtesterlib import Strategy
 
-from ou import JumpOUKalman
+from ou import JumpOUKalman, OU
 
 @dataclass(slots=True)
 class MeanReversion(Strategy):
@@ -70,5 +70,39 @@ class MeanReversion(Strategy):
 
             elif z < -self.exit_threshold:
                 signal[t] = prev_signal # Hold position
+
+        return pd.Series(signal, index=range(n))
+    
+@dataclass(slots=True)
+class OfflineMeanReversion(Strategy):
+    calibration_window: int
+    entry_threshold: float
+    exit_threshold: float
+
+    @property
+    def name(self) -> str:
+        return (
+            f"{self.calibration_window}-Bar MR"
+            f" Z=[{self.exit_threshold}, {self.entry_threshold}]"
+        )
+
+    def generate_signals(self, df: pd.DataFrame) -> pd.Series:
+        prices = df["close"].to_numpy(dtype=float)
+
+        model = OU.calibrate(prices[:self.calibration_window])
+
+        n = len(df)
+        signal = np.zeros(n)
+
+        for t in range(self.calibration_window, n):
+            z = model.update(prices[t])
+            prev_signal = signal[t - 1]
+
+            if prev_signal == 0.0: 
+                if z < -self.entry_threshold:
+                    signal[t] = 1.0
+
+            elif z < -self.exit_threshold:
+                signal[t] = prev_signal
 
         return pd.Series(signal, index=range(n))

@@ -141,3 +141,44 @@ class JumpOUKalman:
         self.mu += self.mu_ewma_alpha * (self.x - self.mu)
 
         return z_score
+    
+
+@dataclass
+class OU:
+    phi: float
+    mu: float
+    sigma: float
+
+    @property
+    def stat_std(self) -> float:
+        return self.sigma / np.sqrt(self.phi * 2)
+
+    @classmethod
+    def calibrate(cls, prices: np.ndarray) -> OU:
+        y = prices[np.isfinite(prices)]
+
+        if y.size < 3:
+            raise ValueError(
+                "At least three valid price observations are required."
+            )
+        
+        mu = float(np.mean(y))
+
+        x_prev = y[:-1]
+        x_current = y[1:]
+
+        X = np.column_stack([np.ones_like(x_prev), x_prev])
+        c, phi = np.linalg.lstsq(X, x_current, rcond=None)[0].astype(float)
+
+        phi = float(np.clip(phi, 0.01, 0.99))
+
+        residuals = x_current - (c + phi * x_prev)
+        sigma = np.sqrt(np.mean(residuals ** 2))
+
+        if sigma <= 0.0 or not np.isfinite(sigma):
+            sigma = max(float(np.std(y)) * 0.01, 1e-9)
+
+        return OU(phi, mu, sigma)
+    
+    def update(self, price: float) -> float:
+        return (price - self.mu) / self.stat_std
