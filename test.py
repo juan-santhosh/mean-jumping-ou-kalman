@@ -2,21 +2,21 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from backtesterlib import Backtester, BuyAndHold
 
+from data import load_data
 from strategies import MeanReversion
 
 plt.style.use('dark_background')
 
-MINUTES_PER_DAY = 60 * 24
-MINUTES_PER_YEAR = MINUTES_PER_DAY * 365
-BACKTEST_INTERVAL_WINDOW = MINUTES_PER_DAY * 30 * 4
+BACKTEST_MONTHS = 4
+WINDOWS_PER_YEAR = 12 / BACKTEST_MONTHS
+MINUTES_PER_YEAR = 60 * 24 * 365
 
-df = pd.read_csv("data/SOLUSDT-1.csv", sep="|", index_col=0) 
-df = df.iloc[-BACKTEST_INTERVAL_WINDOW:].reset_index()
+df = load_data("data/SOLUSDT-1.csv", BACKTEST_MONTHS)
     
 backtester = Backtester(
     df=df, close_column="close",
     bars_per_year=MINUTES_PER_YEAR, 
-    windows_per_year=3,
+    windows_per_year=WINDOWS_PER_YEAR,
     fee_rate=0.00001, fee_in_usd=False
 )
 
