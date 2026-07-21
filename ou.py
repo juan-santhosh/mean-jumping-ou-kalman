@@ -142,6 +142,7 @@ class JumpOUKalman:
 
         return z_score
     
+# Standard OU class for benchmarking
 
 @dataclass
 class OU:

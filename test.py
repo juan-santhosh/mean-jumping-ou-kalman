@@ -28,14 +28,14 @@ backtester.run(
     n_mote_carlo_paths=1000
 )
 
-backtester.run(
-    OfflineMeanReversion(
-        calibration_window=20, 
-        entry_threshold=1.2,
-        exit_threshold=0.2, 
-    ),
-    n_mote_carlo_paths=1000
-)
+# backtester.run(
+#     OfflineMeanReversion(
+#         calibration_window=20, 
+#         entry_threshold=1.2,
+#         exit_threshold=0.2, 
+#     ),
+#     n_mote_carlo_paths=1000,
+# )
 
 backtester.run(BuyAndHold(amount=1.0), n_mote_carlo_paths=0, baseline=True)
 
